@@ -27,6 +27,7 @@
                 <div class="message-preview">{{ privateDropdownOpen ? '选择聊天对象' : '点击展开联系人列表' }}</div>
               </div>
               <div class="message-meta">
+                <span v-if="privateUnreadCount > 0" class="unread-badge">{{ privateUnreadCount }}</span>
                 <span :class="['dropdown-arrow', { rotated: privateDropdownOpen }]">▼</span>
               </div>
               
@@ -177,15 +178,61 @@ export default {
       }
     })
 
+    const privateUnreadCount = computed(() => {
+      return messageList.value
+        .filter(m => m.type === 'private')
+        .reduce((sum, m) => sum + (m.unreadCount || 0), 0)
+    })
+
     const filterTabs = computed(() => {
       const tabs = [
-        { key: 'all', label: '全部消息', count: messageList.value.length },
-        { key: 'system', label: '系统通知', count: messageList.value.filter(m => m.type === 'system' || m.type === 'announcement').length },
-        { key: 'interaction', label: '互动消息', count: messageList.value.filter(m => m.type === 'order').length },
-        { key: 'private', label: '私信', count: messageList.value.filter(m => m.type === 'private').length },
-        { key: 'order', label: '订单物流', count: messageList.value.filter(m => m.type === 'order').length },
-        { key: 'promotion', label: '优惠活动', count: messageList.value.filter(m => m.type === 'promotion').length },
-        { key: 'service', label: '客服消息', count: messageList.value.filter(m => m.type === 'service').length }
+        { 
+          key: 'all', 
+          label: '全部消息', 
+          count: messageList.value.reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'system', 
+          label: '系统通知', 
+          count: messageList.value
+            .filter(m => m.type === 'system' || m.type === 'announcement')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'interaction', 
+          label: '互动消息', 
+          count: messageList.value
+            .filter(m => m.type === 'order' || m.type === 'review')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'private', 
+          label: '私信', 
+          count: messageList.value
+            .filter(m => m.type === 'private')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'order', 
+          label: '订单物流', 
+          count: messageList.value
+            .filter(m => m.type === 'order')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'promotion', 
+          label: '优惠活动', 
+          count: messageList.value
+            .filter(m => m.type === 'promotion')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        },
+        { 
+          key: 'service', 
+          label: '客服消息', 
+          count: messageList.value
+            .filter(m => m.type === 'service')
+            .reduce((sum, m) => sum + (m.unreadCount || 0), 0) 
+        }
       ]
       return tabs
     })
@@ -292,6 +339,16 @@ export default {
                 }
               }
               
+              if (data.targetUserId === user.value?.id) {
+                const sessionIndex = messageList.value.findIndex(
+                  m => m.type === 'private' && m.name === (data.userId === 1 ? 'admin' : 'user')
+                )
+                if (sessionIndex !== -1) {
+                  messageList.value[sessionIndex].unreadCount = (messageList.value[sessionIndex].unreadCount || 0) + 1
+                  console.log('更新私信未读计数:', messageList.value[sessionIndex].unreadCount)
+                }
+              }
+
               if (shouldDisplay) {
                 currentChatMessages.value.push({
                   content: data.content,
@@ -349,7 +406,8 @@ export default {
             name: session.targetName,
             preview: session.lastMessage,
             time: session.lastTime ? formatDateTime(session.lastTime) : '未知',
-            type: session.sessionType
+            type: session.sessionType,
+            unreadCount: session.unreadCount || 0
           }))
           messageList.value = [...messages, ...sessions]
           console.log('消息列表已更新:', messageList.value)
@@ -458,7 +516,12 @@ export default {
         if (index !== -1) {
           messageList.value[index].unreadCount = 0
         }
-        await messageApi.markRead(item.id, user.value.id)
+        
+        if (item.type === 'private' || item.type === 'service') {
+          await messageApi.markRead(item.id, user.value.id)
+        } else {
+          await messageApi.markMessageRead(item.id, user.value.id)
+        }
       }
 
       if (item.type === 'private' || item.type === 'service') {
@@ -745,9 +808,8 @@ export default {
 
 .message-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
 .message-time {
@@ -1018,6 +1080,19 @@ export default {
   font-size: 12px;
   text-align: center;
   padding-top: 10px;
+}
+
+.unread-badge {
+  background-color: #ff4444;
+  color: white;
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
 }
 
 @media (max-width: 800px) {

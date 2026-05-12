@@ -56,6 +56,12 @@ export default {
     })
   },
 
+  markMessageRead(messageId, userId) {
+    return api.post('/message/mark-message-read', null, {
+      params: { messageId, userId }
+    })
+  },
+
   markAllRead(userId) {
     return api.post('/message/mark-all-read', null, {
       params: { userId }
