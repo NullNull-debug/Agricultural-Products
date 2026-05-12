@@ -176,6 +176,22 @@ public class MessageController {
         return result;
     }
 
+    @PostMapping("/mark-message-read")
+    public Map<String, Object> markMessageRead(
+            @RequestParam Long messageId,
+            @RequestParam Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            messageService.markMessageRead(messageId, userId);
+            result.put("code", 200);
+            result.put("message", "已标记已读");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "标记已读失败: " + e.getMessage());
+        }
+        return result;
+    }
+
     @PostMapping("/mark-all-read")
     public Map<String, Object> markAllRead(@RequestParam Long userId) {
         Map<String, Object> result = new HashMap<>();

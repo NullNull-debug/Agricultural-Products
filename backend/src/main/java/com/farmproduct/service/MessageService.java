@@ -105,6 +105,14 @@ public class MessageService {
         }
     }
 
+    public void markMessageRead(Long messageId, Long userId) {
+        Message message = messageMapper.selectById(messageId);
+        if (message != null && message.getUserId().equals(userId)) {
+            message.setUnreadCount(0);
+            messageMapper.updateById(message);
+        }
+    }
+
     public void markAllRead(Long userId) {
         QueryWrapper<MessageSession> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId);
@@ -157,10 +165,31 @@ public class MessageService {
         if (session != null) {
             session.setLastMessage(content);
             session.setLastTime(LocalDateTime.now());
-            if (!isSelf) {
-                session.setUnreadCount(session.getUnreadCount() + 1);
-            }
             sessionMapper.updateById(session);
+
+            Long targetUserId = session.getTargetId();
+            if (targetUserId != null) {
+                QueryWrapper<MessageSession> targetWrapper = new QueryWrapper<>();
+                targetWrapper.eq("user_id", targetUserId);
+                targetWrapper.eq("session_type", "private");
+                targetWrapper.eq("target_id", userId);
+                targetWrapper.eq("status", 1);
+                MessageSession targetSession = sessionMapper.selectOne(targetWrapper);
+
+                if (targetSession != null) {
+                    targetSession.setLastMessage(content);
+                    targetSession.setLastTime(LocalDateTime.now());
+                    targetSession.setUnreadCount(targetSession.getUnreadCount() + 1);
+                    sessionMapper.updateById(targetSession);
+
+                    String targetKey = UNREAD_COUNT_KEY + targetUserId;
+                    try {
+                        redisTemplate.delete(targetKey);
+                    } catch (Exception e) {
+                        // Redis连接失败，跳过缓存清除
+                    }
+                }
+            }
 
             String key = UNREAD_COUNT_KEY + session.getUserId();
             try {
