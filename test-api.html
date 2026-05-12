@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试订单状态更新API</title>
+</head>
+<body>
+    <h1>测试订单状态更新API</h1>
+    <button onclick="testUpdateOrderStatus()">测试更新订单状态</button>
+    <div id="result"></div>
+
+    <script>
+        function testUpdateOrderStatus() {
+            const url = 'http://localhost:8080/api/order/update';
+            const data = {
+                id: 1,
+                status: 3
+            };
+
+            fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = 'Error: ' + error;
+            });
+        }
+    </script>
+</body>
+</html>
